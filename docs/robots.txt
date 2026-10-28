@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://benjaminbencsik.github.io/ad-stale-accounts/sitemap.xml

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find Stale AD Accounts with PowerShell (Free Script) | Inactive Users &amp; Computers</title>
+<meta name="description" content="Free PowerShell script to find stale and inactive user and computer accounts in Active Directory. List users not logged in for 90 days, export to CSV, read-only and safe.">
+<link rel="canonical" href="https://benjaminbencsik.github.io/ad-stale-accounts/">
+<meta name="robots" content="index, follow">
+<meta name="author" content="Ben Bencsik">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Find Stale AD Accounts with PowerShell (Free Script)">
+<meta property="og:description" content="Find inactive Active Directory users and computers in one command. Free, read-only, exports to CSV.">
+<meta property="og:url" content="https://benjaminbencsik.github.io/ad-stale-accounts/">
+<meta property="og:image" content="https://benjaminbencsik.github.io/ad-stale-accounts/report-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Find Stale AD Accounts with PowerShell (Free Script)">
+<meta name="twitter:description" content="Find inactive Active Directory users and computers in one command. Free, read-only, exports to CSV.">
+<meta name="twitter:image" content="https://benjaminbencsik.github.io/ad-stale-accounts/report-preview.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "Find-StaleADAccounts",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Windows",
+      "description": "Free PowerShell script that finds stale and inactive user and computer accounts in Active Directory and exports them to CSV.",
+      "url": "https://benjaminbencsik.github.io/ad-stale-accounts/",
+      "downloadUrl": "https://github.com/benjaminbencsik/ad-stale-accounts",
+      "softwareVersion": "1.0.0",
+      "license": "https://opensource.org/licenses/MIT",
+      "author": {"@type": "Person", "name": "Ben Bencsik"},
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {"@type": "Question", "name": "How do I find users who haven't logged in for 90 days in Active Directory?",
+         "acceptedAnswer": {"@type": "Answer", "text": "Run .\\Find-StaleADAccounts.ps1 -Type User -Days 90. It lists enabled users whose LastLogonDate is older than 90 days or who never logged on, and skips accounts created in the last 90 days."}},
+        {"@type": "Question", "name": "How do I find inactive computer accounts in AD?",
+         "acceptedAnswer": {"@type": "Answer", "text": "Run .\\Find-StaleADAccounts.ps1 -Type Computer. Computers reset their machine password every 30 days by default, so one that has not logged on in 90+ days is almost always decommissioned."}},
+        {"@type": "Question", "name": "Is lastLogonTimestamp accurate?",
+         "acceptedAnswer": {"@type": "Answer", "text": "lastLogonTimestamp (exposed as LastLogonDate) replicates to every domain controller but can lag the real last logon by up to about 14 days. That is accurate enough for thresholds of 30 days or more."}},
+        {"@type": "Question", "name": "Does the script change anything in Active Directory?",
+         "acceptedAnswer": {"@type": "Answer", "text": "No. Find-StaleADAccounts is read-only. It never disables, moves or deletes objects."}},
+        {"@type": "Question", "name": "Should I delete stale AD accounts?",
+         "acceptedAnswer": {"@type": "Answer", "text": "Disable them first and move them to a quarantine OU for 30 to 90 days. If nothing breaks and nobody asks, delete them. Deleting straight away loses the SID and group memberships."}}
+      ]
+    }
+  ]
+}
+</script>
+
+<style>
+:root{--bg:#0f141c;--panel:#161d28;--line:#253041;--text:#e6ebf2;--muted:#9aa6b8;--accent:#4f9dff;--accent2:#2dd4a7;--code:#0b1017}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font:17px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+a{color:var(--accent)}main{max-width:860px;margin:0 auto;padding:0 22px 80px}
+header.hero{padding:72px 0 40px;border-bottom:1px solid var(--line);margin-bottom:40px}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:13px}
+h1{font-size:clamp(30px,5vw,46px);line-height:1.15;margin:10px 0 16px}
+h2{font-size:28px;margin:56px 0 12px;line-height:1.25}h3{font-size:20px;margin:28px 0 6px}
+.lead{font-size:19px;color:var(--muted);max-width:680px}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.btn{display:inline-block;padding:12px 20px;border-radius:8px;font-weight:600;text-decoration:none;border:1px solid var(--line);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#04111f}
+.badges{display:flex;gap:16px;flex-wrap:wrap;margin-top:22px;color:var(--muted);font-size:14px}
+.badges span::before{content:"✓ ";color:var(--accent2)}
+pre{position:relative;background:var(--code);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow-x:auto;font:14px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
+p code,li code,td code{background:var(--panel);padding:1px 6px;border-radius:4px}
+.copy{position:absolute;top:8px;right:8px;background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:6px;font-size:12px;padding:4px 9px;cursor:pointer}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:12px 0}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
+.c{color:#7d8a9c}.k{color:#ff9e64}.s{color:#9ece6a}
+details{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+.pro{margin-top:64px;background:linear-gradient(160deg,#18243a,#14202e);border:1px solid #2c3e5c;border-radius:14px;padding:32px}
+.pro img{width:100%;border-radius:8px;border:1px solid var(--line);margin:18px 0}
+.pro ul{padding-left:20px}.price{font-size:30px;font-weight:700;margin:6px 0 2px}
+footer{border-top:1px solid var(--line);margin-top:64px;padding-top:22px;color:var(--muted);font-size:14px}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 20px;font-size:15px}
+nav.toc ol{margin:6px 0 0;padding-left:20px}
+</style>
+</head>
+<body>
+<main>
+<header class="hero">
+  <div class="eyebrow">Free PowerShell script · Active Directory</div>
+  <h1>Find stale AD accounts with PowerShell</h1>
+  <p class="lead">One command lists every enabled user and computer in Active Directory that hasn't logged on in 90 days (or any threshold you choose), skips new hires, and exports to CSV.</p>
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/benjaminbencsik/ad-stale-accounts">Download free on GitHub</a>
+    <a class="btn" href="#pro">See the full AD Hygiene Toolkit →</a>
+  </div>
+  <div class="badges"><span>Read-only</span><span>PowerShell 5.1 &amp; 7+</span><span>No admin rights needed</span><span>MIT licensed</span></div>
+</header>
+
+<nav class="toc" aria-label="Contents"><strong>On this page</strong>
+<ol>
+<li><a href="#quick-start">Quick start</a></li>
+<li><a href="#why">Why stale accounts are a security risk</a></li>
+<li><a href="#how">How to find inactive AD users and computers</a></li>
+<li><a href="#cleanup">Safely cleaning up stale accounts</a></li>
+<li><a href="#faq">FAQ</a></li>
+</ol></nav>
+
+<h2 id="quick-start">Quick start</h2>
+<pre><code><span class="c"># Download</span>
+Invoke-WebRequest https://raw.githubusercontent.com/benjaminbencsik/ad-stale-accounts/main/Find-StaleADAccounts.ps1 -OutFile Find-StaleADAccounts.ps1
+Unblock-File .\Find-StaleADAccounts.ps1
+
+<span class="c"># Users and computers inactive for 90+ days</span>
+.\Find-StaleADAccounts.ps1
+
+<span class="c"># Users only, 180 days, one OU, export to CSV</span>
+.\Find-StaleADAccounts.ps1 <span class="k">-Days</span> 180 <span class="k">-Type</span> User <span class="k">-SearchBase</span> <span class="s">'OU=Staff,DC=corp,DC=local'</span> <span class="k">-CsvPath</span> .\stale-users.csv</code></pre>
+
+<table>
+<tr><th>Parameter</th><th>Default</th><th>What it does</th></tr>
+<tr><td><code>-Days</code></td><td>90</td><td>Inactivity threshold in days</td></tr>
+<tr><td><code>-Type</code></td><td>Both</td><td><code>User</code>, <code>Computer</code> or <code>Both</code></td></tr>
+<tr><td><code>-SearchBase</code></td><td>domain</td><td>Limit to one OU</td></tr>
+<tr><td><code>-Server</code></td><td>nearest DC</td><td>Target DC or domain</td></tr>
+<tr><td><code>-ExcludeSamAccountName</code></td><td>krbtgt, Guest…</td><td>Skip accounts; wildcards like <code>svc_*</code> allowed</td></tr>
+<tr><td><code>-CsvPath</code></td><td>none</td><td>Export results to CSV</td></tr>
+</table>
+
+<h2 id="why">Why stale AD accounts are a security risk</h2>
+<p>Every enabled account is a door into your domain. When someone leaves and their account stays enabled, that door stays unlocked, and nobody is watching it. Attackers love stale accounts because:</p>
+<ul>
+<li><strong>Nobody notices strange logons.</strong> The owner isn't around to report an unexpected MFA prompt or a password reset.</li>
+<li><strong>Old passwords are often weak.</strong> Accounts that predate your current password policy are prime targets for password spraying.</li>
+<li><strong>Group memberships pile up.</strong> A forgotten account may still sit in VPN, file-share or even admin groups.</li>
+<li><strong>Auditors flag them.</strong> SOC 2, ISO 27001, PCI DSS and cyber-insurance questionnaires all ask how you handle inactive accounts.</li>
+</ul>
+<p>Stale <em>computer</em> accounts matter too. They clutter reports and licence counts, and they hide which machines are actually managed and patched.</p>
+
+<h2 id="how">How to find inactive users and computers in Active Directory</h2>
+<h3>The attribute that matters: lastLogonTimestamp</h3>
+<p>AD stores logon times in two places. <code>lastLogon</code> is exact but <strong>not replicated</strong>, so you'd have to query every domain controller and take the newest value. <code>lastLogonTimestamp</code> <strong>is replicated</strong>, but it only updates when the stored value is older than about 9–14 days. PowerShell exposes it as the friendly <code>LastLogonDate</code> property.</p>
+<p>For finding accounts inactive for 30, 90 or 180 days, that ~14-day lag doesn't matter, and one fast query against one DC is enough. That's the approach the script uses.</p>
+
+<h3>The one-liner (and its traps)</h3>
+<pre><code>Search-ADAccount <span class="k">-AccountInactive</span> <span class="k">-TimeSpan</span> 90.00:00:00 <span class="k">-UsersOnly</span></code></pre>
+<p>This works, but on its own it:</p>
+<ul>
+<li>includes <strong>disabled</strong> accounts unless you add a filter,</li>
+<li>flags <strong>brand-new accounts</strong> that haven't logged on yet (your Monday new hires),</li>
+<li>gives you no easy exclusion list for service and break-glass accounts.</li>
+</ul>
+
+<h3>What Find-StaleADAccounts does instead</h3>
+<p>An account is reported only when it is <strong>enabled</strong>, its <code>LastLogonDate</code> is older than the threshold (or it has <strong>never</strong> logged on), <strong>and</strong> it was created before the threshold. The core logic is:</p>
+<pre><code>$cutoff = (Get-Date).AddDays(-$Days)
+Get-ADUser <span class="k">-Filter</span> <span class="s">'Enabled -eq $true'</span> <span class="k">-Properties</span> LastLogonDate, whenCreated |
+  Where-Object { $_.whenCreated -lt $cutoff -and
+                 ($null -eq $_.LastLogonDate -or $_.LastLogonDate -lt $cutoff) }</code></pre>
+<p>The script adds computers, exclusions, OU scoping, days-inactive and CSV export on top of that.</p>
+
+<h2 id="cleanup">Safely cleaning up stale accounts</h2>
+<ol>
+<li><strong>Review the list.</strong> Look for service accounts, shared mailboxes, and hybrid users who only sign in to Microsoft 365 (on-prem AD never sees those sign-ins). Add them to <code>-ExcludeSamAccountName</code>.</li>
+<li><strong>Disable, don't delete.</strong> Disabling is instantly reversible. Deleting loses the SID, group memberships and attributes (unless you have the AD Recycle Bin, and even then it's slower to undo).</li>
+<li><strong>Tag and quarantine.</strong> Stamp the description with the date and reason, and move the account to a <em>Disabled</em> OU so it's obvious what happened.</li>
+<li><strong>Wait 30–90 days</strong>, then delete what nobody asked about.</li>
+<li><strong>Repeat monthly</strong> as a scheduled task.</li>
+</ol>
+<p>Steps 3–5 are exactly what the <a href="#pro">AD Hygiene Toolkit</a> automates, with full <code>-WhatIf</code> support and one-command undo.</p>
+
+<h2 id="faq">FAQ</h2>
+<details><summary>How do I find users who haven't logged in for 90 days?</summary><p>Run <code>.\Find-StaleADAccounts.ps1 -Type User -Days 90</code>. It lists enabled users whose last logon is older than 90 days or who never logged on, and skips accounts created in the last 90 days.</p></details>
+<details><summary>How do I find inactive computer accounts in AD?</summary><p>Run <code>.\Find-StaleADAccounts.ps1 -Type Computer</code>. Domain computers change their machine password every 30 days by default, so one that hasn't logged on in 90+ days is almost always decommissioned.</p></details>
+<details><summary>Is lastLogonTimestamp accurate?</summary><p>It can lag the true last logon by up to about 14 days. That's fine for thresholds of 30 days or more. If you need exact times, query <code>lastLogon</code> on every DC.</p></details>
+<details><summary>Does the script change anything in Active Directory?</summary><p>No. It's read-only and never disables, moves or deletes anything.</p></details>
+<details><summary>Should I delete stale AD accounts?</summary><p>Disable them first and move them to a quarantine OU for 30–90 days. If nothing breaks and nobody asks, delete them then.</p></details>
+<details><summary>What permissions do I need?</summary><p>Any authenticated domain user can read these attributes. You need the RSAT ActiveDirectory module: <code>Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0</code>.</p></details>
+
+<section class="pro" id="pro">
+  <div class="eyebrow">Upgrade</div>
+  <h2 style="margin-top:6px">AD Hygiene Toolkit: the full audit and cleanup</h2>
+  <p>Go from "here's a list" to "here's an audit-ready report, and it's cleaned up".</p>
+  <img src="report-preview.png" alt="AD Hygiene Toolkit HTML report showing stale accounts, password risks, Kerberoastable users and privileged group members" width="1280" height="672" loading="lazy">
+  <ul>
+    <li><strong>Audit-ready HTML report</strong> plus a CSV for every finding</li>
+    <li><strong>9 checks:</strong> stale users and computers, password never expires, password not required, old passwords, <strong>Kerberoastable SPN accounts</strong>, <strong>privileged group members</strong> (recursive), disabled users still in groups, empty groups</li>
+    <li><strong>Safe cleanup:</strong> disable, stamp and quarantine stale accounts with <code>-WhatIf</code> / <code>-Confirm</code></li>
+    <li><strong>One-command undo</strong> from a full action log</li>
+    <li>Free updates · MSP-friendly license · plain PowerShell you can read</li>
+  </ul>
+  <div class="price">$24</div>
+  <div class="btns"><a class="btn primary" href="https://github.com/benjaminbencsik/ad-stale-accounts">Launching soon: star the repo to get notified</a></div>
+</section>
+
+<footer>
+  Made by <a href="https://github.com/benjaminbencsik">Ben Bencsik</a> ·
+  <a href="https://github.com/benjaminbencsik/ad-stale-accounts">Source on GitHub</a> · MIT License
+</footer>
+</main>
+<script>
+document.querySelectorAll('pre').forEach(function(pre){
+  var b=document.createElement('button');b.className='copy';b.textContent='Copy';b.type='button';
+  b.onclick=function(){navigator.clipboard.writeText(pre.innerText.replace(/Copy$/,'').trim()).then(function(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy'},1500)})};
+  pre.appendChild(b);
+});
+</script>
+</body>
+</html>
