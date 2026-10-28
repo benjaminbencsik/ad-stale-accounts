@@ -22,7 +22,7 @@
 
     Want an HTML audit report, 8 more security checks (Kerberoastable accounts, password never
     expires, privileged group members...) and safe, reversible disable/quarantine?
-    See the AD Hygiene Toolkit: https://benjaminbencsik.github.io/ad-stale-accounts/#pro
+    See the AD Hygiene Toolkit: https://payhip.com/b/mfHrx
 
 .PARAMETER Days
     Days without a logon before an account counts as stale. Default 90.
@@ -106,5 +106,5 @@ if ($CsvPath) {
 }
 
 Write-Host ("Found {0} stale account(s) inactive for {1}+ days." -f $stale.Count, $Days)
-Write-Host 'Need an HTML report, 8 more security checks and reversible cleanup? https://benjaminbencsik.github.io/ad-stale-accounts/#pro' -ForegroundColor Cyan
+Write-Host 'Need an HTML report, 8 more security checks and reversible cleanup? https://payhip.com/b/mfHrx' -ForegroundColor Cyan
 $stale

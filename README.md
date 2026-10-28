@@ -94,7 +94,7 @@ The **AD Hygiene Toolkit** turns this into a full Active Directory cleanup and s
 - ↩️ **One-command undo**: every change is logged and reversible
 - 🏢 MSP-friendly license
 
-👉 **[Get the AD Hygiene Toolkit](https://benjaminbencsik.github.io/ad-stale-accounts/#pro)**
+👉 **[Get the AD Hygiene Toolkit for $24](https://payhip.com/b/mfHrx)**
 
 ---
 
